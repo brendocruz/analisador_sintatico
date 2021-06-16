@@ -32,31 +32,32 @@ class Grammar {
 		let follow_set = new Array();
 		if(this.isStartSymbol(symbol))
 			follow_set.push("$");
-
-		let regex_aBb = new RegExp(".+? " + symbol + " (?<betha>.*)")
+		let regex_aBb = new RegExp(".+? " + symbol + "(?<beta> (.+)|$)")
 		this.productions.forEach((obj_production) => {
 			let production = obj_production.getBodyString();
 			production.forEach((subproduction) => {
-//				console.log(obj_production.head, subproduction)
 				let matches = subproduction.match(regex_aBb)
 				if(matches === null) return
-				let betha = matches["groups"].betha;
-				let betha_parts = betha.split(/ +/);
-				let epsilon_pos = betha_parts.indexOf('e');
 
-				console.log(betha)
-				if(betha !== '') {
-					// !WARNING splice
-					if(epsilon_pos !== -1)
-						betha_parts.splice(epsilon_pos, 1)
-					follow_set.push(... betha_parts);
+				let beta = matches["groups"].beta;
+				let beta_parts = beta.split(/ +/);
+				if(beta === '') {
+					if(obj_production.head !== symbol) {
+						let follow_sub = this.follow(obj_production.head);
+						follow_set.push(... follow_sub);
+					}
 				} else {
-					follow_subproduction = this.follow(subproduction);
-					follow_set.push(... follow_subproduction);
+					beta_parts.forEach((part) => {
+						if(part === '') return;
+						let first = this.first(part);
+						let epsilon_pos = first.indexOf("e");
+						if(epsilon_pos !== -1) {
+							first.splice(epsilon_pos, 1);
+							follow_set.push(... this.follow(part))			
+						}
+						follow_set.push(... first);
+					});
 				}
-
-				betha_first = this.first(betha);
-
 			});
 		});
 		return follow_set;
@@ -150,8 +151,5 @@ productions = [
 grammar = new Grammar(terminals, variables, startSymbol, productions)
 
 variables.forEach((item) => {
-//	console.log(item.character, grammar.first(item.character))
-// console.log(item.character, grammar.follow(item.character))
+	console.log(item.character, grammar.follow(item.character))
 });
-
-console.log(variables[0], grammar.follow("E"));
